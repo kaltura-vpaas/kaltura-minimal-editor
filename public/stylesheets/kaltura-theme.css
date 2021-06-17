@@ -1,0 +1,52 @@
+@font-face {
+  font-family: CentraNo1;
+  src: url(../fonts/CentraNo1-Hairline.woff) format("woff"),
+    url(../fonts/CentraNo1-Hairline.ttf) format("truetype");
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: CentraNo1;
+  src: url(../fonts/CentraNo1-Thin.woff) format("woff"),
+    url(../fonts/CentraNo1-Thin.ttf) format("truetype");
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: CentraNo1;
+  src: url(../fonts/CentraNo1-Light.woff) format("woff"),
+    url(../fonts/CentraNo1-Light.ttf) format("truetype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: CentraNo1;
+  src: url(../fonts/CentraNo1-Book.woff) format("woff"),
+    url(../fonts/CentraNo1-Book.ttf) format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: CentraNo1;
+  src: url(../fonts/CentraNo1-Medium.woff) format("woff"),
+    url(../fonts/CentraNo1-Medium.ttf) format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: CentraNo1;
+  src: url(../fonts/CentraNo1-Bold.woff) format("woff"),
+    url(../fonts/CentraNo1-Bold.ttf) format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+* {
+  font-family: CentraNo1;
+ }

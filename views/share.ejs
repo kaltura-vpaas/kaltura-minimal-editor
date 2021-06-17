@@ -1,0 +1,74 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <title>TelePrompter</title>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="javascript/jajax.js"></script>
+
+    <link rel="stylesheet" href="stylesheets/index.css">
+    <link rel="stylesheet" href="stylesheets/kaltura-theme.css">
+
+    <style>
+        .center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            -moz-transform: translateX(-50%) translateY(-50%);
+            -webkit-transform: translateX(-50%) translateY(-50%);
+            transform: translateX(-50%) translateY(-50%);
+        }
+
+        .center>.incenter {
+            margin: auto;
+        }
+
+    </style>
+</head>
+
+<body>
+    <div id="spinner" class="center">
+        <h1>Preparing Video</h1>
+        <img class="incenter" src="images/spinner.png">
+    </div>
+    <div class="parent">
+        <div id="kaltura-player" class="recorder"> </div>
+    </div>
+    <script type="text/javascript"
+        src="https://cdnapisec.kaltura.com/p/<%=process.env.KALTURA_PARTNER_ID%>/embedPlaykitJs/uiconf_id/<%=process.env.KALTURA_REC_PLAYER_ID%>"></script>
+
+    <script type="text/javascript">
+        function poll() {
+            $.getJSON("/status?entryId=<%=entryId%>", function (data) {
+                if (data['ready']) {
+                    $("#spinner").hide();
+                    try {
+                        var player = KalturaPlayer.setup({
+                            targetId: "kaltura-player",
+                            provider: {
+                                partnerId: <%= process.env.KALTURA_PARTNER_ID %>,
+                                uiConfId: <%= process.env.KALTURA_REC_PLAYER_ID %>
+                            }
+                        });
+                        //load first entry in player
+                        player.loadMedia({ entryId: '<%= entryId%>' });
+                    } catch (e) {
+                        console.error(e.message)
+                    }
+                } else {
+                    setTimeout(poll, 3000);
+                }
+            }).done(function () {
+                console.log("second success");
+            }).fail(function (e) {
+                console.error(e);
+            }).always(function () {
+                console.log("complete");
+            });
+        }
+        poll();
+      
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,37 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <title>TelePrompter</title>
+    <script src="https://www.kaltura.com/apps/expressrecorder/latest/express-recorder.js"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <link rel="stylesheet" href="stylesheets/index.css">
+</head>
+
+<body>
+    <div class="recorder" id="recorder" >
+        <script type="text/javascript">
+            var expRec = Kaltura.ExpressRecorder.create('recorder', {
+                "ks": "<%=ks%>",
+                "serviceUrl": "<%=process.env.KALTURA_SERVICE_URL%>",
+                "app": "Edit Test",
+                "playerUrl": "<%=process.env.KALTURA_SERVICE_URL%>",
+                "conversionProfileId": null,
+                "partnerId": "<%=process.env.KALTURA_PARTNER_ID %>",
+                "uiConfId": "<%=process.env.KALTURA_REC_PLAYER_ID %>",
+                "browserNotSupportedText": "Your browser is not supported",
+                "showUploadUI": true
+            });
+
+            //when upload of video is complete, redirect user to editor
+            expRec.instance.addEventListener("mediaUploadEnded", function (event) {
+                window.onbeforeunload = null;
+                window.location = "edit?entryId=" + event.detail.entryId;
+            });
+
+        </script>
+    </div>
+
+</body>
+
+</html>
