@@ -1,24 +1,23 @@
 <!DOCTYPE HTML>
 <html>
-
 <head>
-    <title>TelePrompter</title>
+    <title>Kaltura Editor Minamal</title>
     <script src="https://www.kaltura.com/apps/expressrecorder/latest/express-recorder.js"></script>
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <link rel="stylesheet" href="stylesheets/index.css">
+    <link rel="stylesheet" href="stylesheets/style.css">
 </head>
 
 <body>
-    <div class="recorder" id="recorder" >
+    <div class="recorder" id="recorder">
         <script type="text/javascript">
             var expRec = Kaltura.ExpressRecorder.create('recorder', {
                 "ks": "<%=ks%>",
                 "serviceUrl": "<%=process.env.KALTURA_SERVICE_URL%>",
-                "app": "Edit Test",
                 "playerUrl": "<%=process.env.KALTURA_SERVICE_URL%>",
-                "conversionProfileId": null,
                 "partnerId": "<%=process.env.KALTURA_PARTNER_ID %>",
                 "uiConfId": "<%=process.env.KALTURA_REC_PLAYER_ID %>",
+                "app": "Edit Test",
+                "conversionProfileId": null,
                 "browserNotSupportedText": "Your browser is not supported",
                 "showUploadUI": true
             });
@@ -31,7 +30,5 @@
 
         </script>
     </div>
-
 </body>
-
 </html>

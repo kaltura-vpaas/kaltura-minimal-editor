@@ -3,7 +3,7 @@
 
 <head>
   <title></title>
-  <link rel="stylesheet" href="/stylesheets/edit.css">
+  <link rel="stylesheet" href="/stylesheets/style.css">
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js" crossorigin="anonymous"></script>
 </head>
 
@@ -79,7 +79,7 @@
           /* URL to redirect to when the user wishes to leave the editor */
           //'exit_link': "URL TO NAVIGATE TO WHEN EXITING THE APP.",
           /* Should the editor hide the navigation bar (the sidebar holding the tabs icons)? */
-          'hide_navigation_bar': false,
+          'hide_navigation_bar': true,
           /* Should the editor hide the "go to media" button after quiz creation? */
           'hide_quiz_goto_media_button': false,
           /* When creating a new quiz, should the editor skip "start" screen and create the new quiz entry automatically upon entering the tab? */
@@ -101,6 +101,25 @@
 
       if(postMessageData?.messageType) {
         console.log("MSG: " +postMessageData.messageType)
+      }
+      
+      /* received when a clip was created.
+      * postMessageData.data: {
+      *  originalEntryId,
+      *  newEntryId,
+      *  newEntryName
+      * }
+      * should return a message where message.messageType = kea-clip-message,
+      * and message.data is the (localized) text to show the user.
+      * */
+      if (postMessageData.messageType === 'kea-clip-created') {
+        // send a message to editor app which will show up after clip has been created:
+        var message = 'Thank you for creating a new clip, the new entry ID is: ' + postMessageData.data.newEntryId;
+        e.source.postMessage({
+          'messageType': 'kea-clip-message',
+          'data': message
+        }, e.origin);
+        window.location = "/share?entryId="+postMessageData.data.newEntryId;
       }
 
       /* received when a trim action was requested.
@@ -137,24 +156,6 @@
         console.log('processing of entry with id ' + postMessageData.data?.entryId + ' is complete');
       }
 
-      /* received when a clip was created.
-      * postMessageData.data: {
-      *  originalEntryId,
-      *  newEntryId,
-      *  newEntryName
-      * }
-      * should return a message where message.messageType = kea-clip-message,
-      * and message.data is the (localized) text to show the user.
-      * */
-      if (postMessageData.messageType === 'kea-clip-created') {
-        // send a message to editor app which will show up after clip has been created:
-        var message = 'Thank you for creating a new clip, the new entry ID is: ' + postMessageData.data.newEntryId;
-        e.source.postMessage({
-          'messageType': 'kea-clip-message',
-          'data': message
-        }, e.origin);
-        window.location = "/share?entryId="+postMessageData.data.newEntryId;
-      }
 
       /* request for a KS to pass to the preview player
       * message.data = entryId
@@ -169,21 +170,6 @@
           messageType: 'kea-preview-ks',
           data: ks
         }, e.origin);
-      }
-
-      /* request for a KS. required for entitlements and access control when "switching" entries
-        (currently when creating a new quiz only).
-      * message.data = entryId
-      * may return {
-      *   messageType: kea-ks
-      *   data: ks
-      * }
-      * if not provided, the main KS will be used */
-      if (postMessageData.messageType === 'kea-get-ks') {
-        e.source.postMessage({
-          messageType: 'kea-ks',
-          data: ks
-        }, e.origin)
       }
 
       /* request for user display name.
