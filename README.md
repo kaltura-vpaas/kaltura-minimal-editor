@@ -1,7 +1,12 @@
 # Kaltura Teleprompter
 A proof of concept that overlays a teleprompter on top of the [Kaltura Express Recorder]( https://github.com/kaltura-vpaas/express-recorder). The Kaltura [Editor](https://github.com/kaltura-vpaas/kaltura-editor-app-embed) is then implemented to allow recordings to be trimmed. 
 
+## Live Demo:
 
+https://kaltura-minimal-editor.herokuapp.com/
+
+## Video Walkthrough:
+http://www.kaltura.com/tiny/tj9d0
 
 ## Requirements:
 
