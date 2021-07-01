@@ -1,8 +1,12 @@
-# Kaltura Minimal Editor
-A proof of concept that demonstrates the minimal amount of code to run the The Kaltura [Editor](https://github.com/kaltura-vpaas/kaltura-editor-app-embed). First a  [Kaltura Express Recorder]( https://github.com/kaltura-vpaas/express-recorder) is used to record a video, then the editor is implemented to allow recordings to be trimmed, finally the Kaltura javascript player is used to playback the recording. This example helps you understand the flow of a recording through the Kaltura API and provides a pattern for the kind of user experience you should consider implementing when integrating the editor.
+# Kaltura Teleprompter
+A proof of concept that overlays a teleprompter on top of the [Kaltura Express Recorder]( https://github.com/kaltura-vpaas/express-recorder). The Kaltura [Editor](https://github.com/kaltura-vpaas/kaltura-editor-app-embed) is then implemented to allow recordings to be trimmed. 
 
-| [Live Demo](https://kaltura-minimal-editor.herokuapp.com/) | [Video Guide](http://www.kaltura.com/tiny/ksa4z) |
-| :--------------------------------------------------------: | :----------------------------------------------: |
+## Live Demo:
+
+https://kaltura-minimal-editor.herokuapp.com/
+
+## Video Walkthrough:
+http://www.kaltura.com/tiny/tj9d0
 
 ## Requirements:
 
@@ -11,28 +15,104 @@ A proof of concept that demonstrates the minimal amount of code to run the The K
 
 ## Getting Started:
 
-1. Copy [env.template](https://github.com/kaltura-vpaas/kaltura-minimal-editor/blob/main/env.template) to .env and fill in your information
+1. Copy env.template to .env and fill in your information
 2. Run: npm install
 3. For developement run: npm run dev   
 4. Or, for production run: npm start
 
 ## Underneath the hood
 
-This sample application consists of three screens. The first screen uses the [Kaltura Express Recorder](https://github.com/kaltura-vpaas/express-recorder ) to record a video https://github.com/kaltura-vpaas/kaltura-minimal-editor/blob/main/views/index.ejs
+### High Level Application Architecture
 
-In the third screen, The Kaltura Player is used to display the edited video.
+Kaltura Teleprompter is built on [Node.js](https://nodejs.org/) and development began by forking the [Kaltura Node.js Template](https://github.com/kaltura-vpaas/kaltura-nodejs-template) 
+
+Essentially, the teleprompter recording UI is a mashup of two projects, the javascript based [Kaltura Express Recorder API](https://github.com/kaltura-vpaas/express-recorder)  and https://github.com/manifestinteractive/teleprompter. Event listeners from the Express Recorder are used to synchronize the start time of the teleprompter and the recorder.
+
+The second part of the application is an implementation of the javascript Kaltura [Editor](https://github.com/kaltura-vpaas/kaltura-editor-app-embed) API, and its event listeners are used to provide reliable download links and a confusion-free user experience.
+
+You may be wondering why a Node.js app is even necessary given that 99% of this application is written in javascript. The answer is that your API keys should be kept secret so no one can access the Kaltura API as you. These API keys are stored server-side in `.env` and time sensitive strings known as `ks` represent a session identifier for each user and are generated and passed to the UI allowing secure identification of the user.  
+
+### Brief API Walkthrough of video from creation to sharing
+
+#### Recording and uploading
+
+When you first record a video with the javascript Express Recorder, it is saved to the Kaltura Cloud as a `MediaEntry` which you can access as a developer from the [KMC](https://kmc.kaltura.com/index.php/kmcng/login) once recording is finished. Each `MediaEntry` has an `entryId` which is a unique identifier for that video. The `entryId` is returned to the Express Recorder javascript object, and the browser is simply redirected to the editor `routes/edit.js` with the `entryID` in the url. There is also an option to download the video at this point, which is a built-in feature of the Express Recorder
+
+#### Editing
+
+The editor is another standalone javascript based API component. Aside from configuration variables, the editor needs two pieces of information to operate on a given video, the `entryID` that was generated in the previous step, and a `ks` to identify the user. Once editing is complete, the editor's event listeners are implemented to allow the user to download the video
+
+### Recording and Syncing with Teleprompter
+
+When first loading the teleprompter, execution begins in [routes/index.js](https://github.com/kaltura-vpaas/kaltura-teleprompter-nodejs/blob/master/routes/index.js) and a Kaltura session is created via 
+
+```javascript
+var adminks = await KalturaClientFactory.getKS('', { type: kaltura.enums.SessionType.ADMIN });
+```
+
+The session string is then passed to the UI
+
+```javascript
+ res.render('index', { 
+      title: 'Kaltura Teleprompter',
+      ks:adminks
+ });
+```
+
+And execution proceeds to [views/index.ejs](https://github.com/kaltura-vpaas/kaltura-teleprompter-nodejs/blob/master/views/index.ejs) 
+
+#### The teleprompter UI
+
+The teleprompter has no knowledge of the recorder and it exists as an `<iframe>` positioned above the the Express Recorder's UI on the page. The source code for the teleprompter lives in [/public/teleprompter-master](https://github.com/kaltura-vpaas/kaltura-teleprompter-nodejs/tree/master/public/teleprompter-master)
+
+When starting and stopping the recorder its event listeners are triggered and then make javascript calls into the iframe. For example, in [views/index.ejs](https://github.com/kaltura-vpaas/kaltura-teleprompter-nodejs/blob/master/views/index.ejs#L36)  `start_teleprompter()` is called when the `recordingStarted` of Express Recorder is triggered and  `stop_teleprompter()` is called on `recordingEnded` 
+
+```javascript
+           expRec.instance.addEventListener("recordingStarted", function () {
+                console.log("STARTED");
+                setTimeout(function () {
+                    if (!cancelled) {
+                        //call into the iframe of the teleprompter and start it
+                        //when the Express Recorder has started
+                        document.getElementById("teleframe").contentWindow.start_teleprompter();
+                    } else {
+                        cancelled = false;
+                    }
+                }, 3000);
+            });
+            expRec.instance.addEventListener("recordingEnded", function () {
+                console.log("ENDED");
+                //call into the iframe of the teleprompter and stop it
+                //when the Express Recorder has started
+                document.getElementById("teleframe").contentWindow.stop_teleprompter();
+            });
+```
+
+By taking advantage of Kaltura Express Recorder's [event API](https://github.com/kaltura-vpaas/express-recorder) you can create powerful, seamless integrations with the recorder as this project demonstrates.
+
+When the user is satisfied with their recording, they press the "Upload" button on the UI which will upload their video to the Kaltura Cloud as a `MediaEntry`  finally the upload event is triggered in the UI:
+
+```javascript
+//when upload of video is complete, redirect user to editor
+expRec.instance.addEventListener("mediaUploadEnded", function(event) {
+                window.onbeforeunload = null;
+                window.location = "edit?entryId="+event.detail.entryId;
+ });
+```
+
+And it is the `mediaUploadEnded` listener that actually triggers the browser to redirect to the editor. Remember, you can access the uploaded MediaEntry from the [KMC](https://kmc.kaltura.com/index.php/kmcng/login) once it is uploaded.
 
 ### The Editor
 
-The editor is another standalone javascript based API component. And this project a minimal implementation of [Kaltura Editor API component](https://github.com/kaltura-vpaas/kaltura-editor-app-embed) 
+The second screen of the teleprompter is an implementation of the [Kaltura Editor API component](https://github.com/kaltura-vpaas/kaltura-editor-app-embed) 
 
-From the [previous screen:](https://github.com/kaltura-vpaas/kaltura-minimal-editor/blob/main/views/index.ejs#L28) 
+From the previous step 
 
 ```javascript
     window.location = "edit?entryId="+event.detail.entryId;
 ```
 
-will route execution to [edit.js](https://github.com/kaltura-vpaas/kaltura-minimal-editor/blob/main/routes/edit.js) which configures a Kaltura API session and routes execution to [edit.ejs](https://github.com/kaltura-vpaas/kaltura-minimal-editor/blob/main/views/edit.ejs) 
+will route execution to [edit.js](https://github.com/kaltura-vpaas/kaltura-teleprompter-nodejs/blob/master/routes/edit.js) which configures a Kaltura API session and routes execution to [edit.ejs](https://github.com/kaltura-vpaas/kaltura-teleprompter-nodejs/blob/master/views/edit.ejs) 
 
 The editor javascript component is a sophisticated editor capable of many different editing modes like quizzes, hotspots and more. The teleprompter only uses a single editing mode, which is clipping and trimming of videos. 
 
@@ -45,104 +125,48 @@ The editing mode is specified in `tabs` field of the `data` dict used to configu
               permissions: ['clip', 'trim'],
               userPermissions: ['clip', 'trim'],
               showOnlyExpandedView: true,
-              showSaveButton: false,
-              showSaveAsButton: true,
-              preSaveMessage: '',
+              showSaveButton: true,
+              showSaveAsButton: false,
+              //preActivateMessage: 'optional: message to show before activating the tab',
+              preSaveMessage: 'Correction, please do not close editor',
+              //preSaveAsMessage: 'optional: message to show before clipping (Save As)',
             }
           },
 ```
 
+To allow users to share their edited videos, a share button has been implemented:
+
+```ejs
+   <a id="shareBtn" 
+ href="https://www.kaltura.com/index.php/extwidget/preview/partner_id/<%=partnerId%>/uiconf_id/<%=uiConfId%>/entry_id/<%=entryId%>/embed/dynamic?">
+      <img src="images/share.png"></a>
+
+  <script type="text/javascript">
+    //hide share button until we receive a notification entry is processed
+    $("#shareBtn").hide();
+```
+
+
+
+And the share button is initially hidden. If the video was shared before editing is complete, the link would not work, so you need to control when the edited video is shareable or not. 
+
 Just like the Express Recorder, the editor has an extensive event listener interface which you can read more about at [Kaltura Editor API component](https://github.com/kaltura-vpaas/kaltura-editor-app-embed) 
 
-In [edit.ejs](https://github.com/kaltura-vpaas/kaltura-minimal-editor/blob/main/views/edit.ejs#L121)
-
 ```javascript
-      /* received when a clip was created.
-      * postMessageData.data: {
-      *  originalEntryId,
-      *  newEntryId,
-      *  newEntryName
-      * }
-      * should return a message where message.messageType = kea-clip-message,
-      * and message.data is the (localized) text to show the user.
-      * */
-      if (postMessageData.messageType === 'kea-clip-created') {
-        // send a message to editor app which will show up after clip has been created:
-        var message = 'Thank you for creating a new clip, the new entry ID is: ' + postMessageData.data.newEntryId;
-        e.source.postMessage({
-          'messageType': 'kea-clip-message',
-          'data': message
-        }, e.origin);
-        window.location = "/share?entryId="+postMessageData.data.newEntryId;
+ 			/* received when a trim action was requested */
+      if (postMessageData.messageType === 'kea-trimming-started') {
+        $("#shareBtn").hide();
+      }
+
+			/* The final notif after entry is finished processing */
+      if (postMessageData.messageType === 'kea-editor-tab-loaded') {
+        $("#shareBtn").show();
       }
 ```
 
-The events this application uses is `kea-clip-created` which fires after the clip has been created. As this example uses the Save As button specified above by 
-
-```javascript
-showSaveAsButton: true
-```
-
-The newEntryId will correspond to the new entry created when the editor is used to clip or trim the original entry.
-
-You could call [media.get](https://developer.kaltura.com/console/service/media/action/get) on the new entry which stores the originalEntry as `rootEntryId` and also stores the timerange of the clip operation:
-
-```json
-  "rootEntryId": "1_123456",
-  "operationAttributes": [
-    {
-      "offset": 0,
-      "duration": 29784,
-      "effectArray": [],
-      "objectType": "KalturaClipAttributes"
-    },
-```
-
-Finally, the `newEntryId` is used to continue the demo app's flow to the final share screen:
-
-```javascript
- window.location = "/share?entryId="+postMessageData.data.newEntryId;
-```
+The first of two events this application uses is `kea-trimming-started` which fires when the user has begun editing. Once this occurs, the sharebutton must be hidden to prevent an unusable share-link from being used. And when editing has completed,  `kea-editor-tab-loaded` is fired and it is safe to share the video again. 
 
 
-
-### Sharing The Video
-
-The sharing page is based off https://developer.kaltura.com/player. But before the player is shown, the video must be ready for sharing.
-
-In [views/share.ejs](https://github.com/kaltura-vpaas/kaltura-minimal-editor/blob/main/views/share.ejs)
-
-```
-        function poll() {
-            $.getJSON("/status?entryId=<%=entryId%>", function (data) {
-                if (data['ready']) {
-                    //show player
-                } else {
-                    setTimeout(poll, 3000);
-                }
-            }
-        }
-        poll();
-```
-
-the `/status` method in [routes/index.js](https://github.com/kaltura-vpaas/kaltura-minimal-editor/blob/main/routes/index.js) is polled recursively every 3 seconds until the video is ready.
-
-And when the video is ready, it is displayed:
-
-```
-                if (data['ready']) {
-                    $("#spinner").hide();
-                    try {
-                        var player = KalturaPlayer.setup({
-                            targetId: "kaltura-player",
-                            provider: {
-                                partnerId: <%= process.env.KALTURA_PARTNER_ID %>,
-                                uiConfId: <%= process.env.KALTURA_REC_PLAYER_ID %>
-                            }
-                        });
-                        //load first entry in player
-                        player.loadMedia({ entryId: '<%= entryId%>' });
-```
 
 # How you can help (guidelines for contributors) 
 Thank you for helping Kaltura grow! If you'd like to contribute please follow these steps:
